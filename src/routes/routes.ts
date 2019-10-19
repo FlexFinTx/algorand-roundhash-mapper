@@ -1,10 +1,10 @@
 import * as express from 'express';
-import { NumHashModel } from '../models/numHashModel';
+import { RoundHashModel } from '../models/roundHashModel';
 
 export class Routes {
   public routes(app: express.Application): void {
     app.route('/:hash').get((req: express.Request, res: express.Response) => {
-      NumHashModel.findOne({ hash: req.params.hash }, (err, result) => {
+      RoundHashModel.findOne({ hash: req.params.hash }, (err, result) => {
         if (err) {
           return res.send(err);
         }

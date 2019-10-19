@@ -1,5 +1,5 @@
 {
-  "name": "algorand-numhash-mapper",
+  "name": "algorand-roundhash-mapper",
   "version": "1.0.0",
   "description": "A worker which stores a mapping from blockHash to blockRound for Algorand in a Mongo database",
   "main": "index.js",

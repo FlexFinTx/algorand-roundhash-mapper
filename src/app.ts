@@ -2,7 +2,7 @@ import * as express from 'express';
 import * as mongoose from 'mongoose';
 import { Routes } from './routes/routes';
 import Axios from 'axios';
-import { NumHashModel } from './models/numHashModel';
+import { RoundHashModel } from './models/roundHashModel';
 
 class App {
   public app: express.Application;
@@ -51,7 +51,7 @@ class App {
       'x-api-key': process.env.PS_API_KEY
     };
 
-    NumHashModel.findOne({})
+    RoundHashModel.findOne({})
       .sort('-round')
       .exec((err, result) => {
         if (err) return console.log('Error getting current state of database');
@@ -85,7 +85,7 @@ class App {
 
     this.CUR_ROUND += 1;
 
-    await NumHashModel.findOneAndUpdate(
+    await RoundHashModel.findOneAndUpdate(
       nh,
       nh,
       { upsert: true },
