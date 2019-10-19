@@ -8,6 +8,7 @@ class App {
   public app: express.Application;
   public routes: Routes = new Routes();
   public mongoURL: string = process.env.MONGO_URL || '';
+  public psBaseURL: string = process.env.PS_BASE_URL || '';
   private START_ROUND: number = Number(process.env.START_ROUND) || 0;
   private CUR_ROUND: number = this.START_ROUND;
   private options = {
@@ -24,6 +25,10 @@ class App {
     this.routes.routes(this.app);
     if (this.mongoURL == '' || !this.mongoURL) {
       console.error('FATAL: MongoDB URL is missing. Exiting...');
+      process.exit(1);
+    }
+    if (this.psBaseURL == '' || !this.psBaseURL) {
+      console.error('FATAL: PureStake API base URL is missing. Exiting...');
       process.exit(1);
     }
     this.mongoSetup();
@@ -60,19 +65,22 @@ class App {
     });
 
     setInterval(async () => {
-      const res = await this.getAndSaveLatestBlockMapping(instance);
-      console.log(`Saved block #${res.round} with hash ${res.hash}`);
+      await this.getAndSaveLatestBlockMapping(instance);
     }, 2500);
   }
 
   private async getAndSaveLatestBlockMapping(instance: any) {
-    let response = await instance.get(
-      `https://mainnet-algorand.api.purestake.io/ps1/v1/block/${this.CUR_ROUND}`
-    );
+    let response = await instance.get(`${this.psBaseURL}${this.CUR_ROUND}`);
+
     const nh = {
       hash: response.data.hash,
       round: response.data.round
     };
+
+    if (!nh.hash || !nh.round) {
+      console.log('PureStake returned error. Skipping...');
+      return;
+    }
 
     this.CUR_ROUND += 1;
 
@@ -82,6 +90,7 @@ class App {
       { upsert: true },
       (err, _doc) => {
         if (err) return console.log(err);
+        console.log(`Saved block #${nh.round} with hash ${nh.hash}`);
       }
     );
     return nh;
