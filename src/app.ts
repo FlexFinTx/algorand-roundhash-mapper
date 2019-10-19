@@ -9,6 +9,7 @@ class App {
   public routes: Routes = new Routes();
   public mongoURL: string = process.env.MONGO_URL || '';
   public psBaseURL: string = process.env.PS_BASE_URL || '';
+  private WAIT_TIME_MS: numer = Number(process.env.WAIT_TIME_MS) || 3000;
   private START_ROUND: number = Number(process.env.START_ROUND) || 0;
   private CUR_ROUND: number = this.START_ROUND;
   private options = {
@@ -66,7 +67,7 @@ class App {
 
     setInterval(async () => {
       await this.getAndSaveLatestBlockMapping(instance);
-    }, 2500);
+    }, this.WAIT_TIME_MS);
   }
 
   private async getAndSaveLatestBlockMapping(instance: any) {
