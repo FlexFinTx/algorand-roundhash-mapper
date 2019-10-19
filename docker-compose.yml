@@ -5,10 +5,7 @@ services:
     ports:
       - '3000:3000'
     restart: unless-stopped
-    environment:
-      - MONGO_URL=mongodb://mongo:27017/mapdb?authSource=admin
-      - MONGO_USERNAME=docker
-      - MONGO_PASSWORD=docker
+    env_file: .env
     links:
       - mongo
     depends_on:

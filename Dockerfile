@@ -13,4 +13,4 @@ RUN tsc
 RUN rm -rf ./src
 
 EXPOSE 3000
-CMD ["nodemon", "./dist/server.js"]
+CMD ["npm", "run", "start"]
