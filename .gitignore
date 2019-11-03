@@ -96,3 +96,4 @@ tests/cases/user/prettier/prettier
 mongo/*
 mongo/
 .env
+db/

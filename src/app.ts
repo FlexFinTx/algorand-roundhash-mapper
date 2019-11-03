@@ -1,38 +1,53 @@
+import 'reflect-metadata';
 import * as express from 'express';
-import * as mongoose from 'mongoose';
 import { Routes } from './routes/routes';
 import Axios from 'axios';
-import { RoundHashModel } from './models/roundHashModel';
+import { RoundHash } from './models/roundHashModel';
+import { createConnection, ConnectionOptions } from 'typeorm';
 
 class App {
   public app: express.Application;
   public routes: Routes = new Routes();
-  public mongoURL: string = process.env.MONGO_URL || '';
+  private dbHost: string = process.env.DB_HOST || '';
+  private dbUsername: string = process.env.DB_USERNAME || '';
+  private dbPassword: string = process.env.DB_PASSWORD || '';
   public psBaseURL: string = process.env.PS_BASE_URL || '';
   private WAIT_TIME_MS: number = Number(process.env.WAIT_TIME_MS) || 3000;
   private START_ROUND: number = Number(process.env.START_ROUND) || 0;
   private CUR_ROUND: number = this.START_ROUND;
-  private options = {
-    user: process.env.MONGO_USERNAME,
-    pass: process.env.MONGO_PASSWORD,
-    keepAlive: true,
-    useUnifiedTopology: true,
-    useNewUrlParser: true
+  public options: ConnectionOptions = {
+    type: 'postgres',
+    host: this.dbHost,
+    port: 5432,
+    username: this.dbUsername,
+    password: this.dbPassword,
+    database: 'mapperdb',
+    synchronize: true,
+    logging: false,
+    entities: [__dirname + '/models/*.js']
   };
 
   constructor() {
     this.app = express();
     this.config();
-    this.routes.routes(this.app);
-    if (this.mongoURL == '' || !this.mongoURL) {
-      console.error('FATAL: MongoDB URL is missing. Exiting...');
+    this.routes.routes(this.app, this.options);
+    if (this.dbHost == '' || !this.dbHost) {
+      console.error('FATAL: DB Host is missing. Exiting...');
+      process.exit(1);
+    }
+    if (this.dbUsername == '' || !this.dbUsername) {
+      console.error('FATAL: DB Username is missing. Exiting...');
+      process.exit(1);
+    }
+    if (this.dbPassword == '' || !this.dbPassword) {
+      console.error('FATAL: DB Password is missing. Exiting...');
       process.exit(1);
     }
     if (this.psBaseURL == '' || !this.psBaseURL) {
       console.error('FATAL: PureStake API base URL is missing. Exiting...');
       process.exit(1);
     }
-    this.mongoSetup();
+
     this.startWork();
   }
 
@@ -41,24 +56,26 @@ class App {
     this.app.use(cors());
   }
 
-  private mongoSetup(): void {
-    mongoose.connect(this.mongoURL, this.options);
-  }
-
-  private startWork(): void {
+  private async startWork() {
     const headers = {
       accept: 'application/json',
       'x-api-key': process.env.PS_API_KEY
     };
 
-    RoundHashModel.findOne({})
-      .sort('-round')
-      .exec((err, result) => {
-        if (err) return console.log('Error getting current state of database');
+    createConnection(this.options)
+      .then(async connection => {
+        let roundHashRepository = connection.getRepository(RoundHash);
+        let result = await roundHashRepository
+          .createQueryBuilder('roundhashes')
+          .orderBy('round', 'DESC')
+          .getOne();
         if (!result) return console.log('No documents found');
-        this.START_ROUND = result.toObject().round;
+        this.START_ROUND = result.round;
         this.CUR_ROUND = this.START_ROUND + 1;
         console.log('Current State: Block Round #' + this.CUR_ROUND);
+      })
+      .catch(err => {
+        console.error(err);
       });
 
     const instance = Axios.create({
@@ -73,46 +90,26 @@ class App {
   private async getAndSaveLatestBlockMapping(instance: any) {
     let response = await instance.get(`${this.psBaseURL}${this.CUR_ROUND}`);
 
-    const nh = {
-      hash: response.data.hash,
-      round: response.data.round
-    };
+    const roundHash = new RoundHash();
+    roundHash.hash = response.data.hash;
+    roundHash.round = response.data.round;
 
-    if (!nh.hash || !nh.round) {
+    if (!roundHash.hash || !roundHash.round) {
       console.log('PureStake returned error. Skipping...');
       return;
     }
 
     this.CUR_ROUND += 1;
 
-    await RoundHashModel.findOneAndUpdate(
-      nh,
-      nh,
-      { upsert: true },
-      (err, _doc) => {
-        if (err) return console.log(err);
-        console.log(`Saved block #${nh.round} with hash ${nh.hash}`);
-      }
-    );
-    return nh;
+    await roundHash
+      .save()
+      .then(rh => {
+        console.log(`Saved block #${rh.round} with hash ${rh.hash}`);
+      })
+      .catch(err => {
+        console.error(err);
+      });
   }
 }
-
-mongoose.connection.on('connected', () => {
-  console.log('Successfully connected to MongoDB!');
-});
-
-mongoose.connection.on('error', (err: Error) => {
-  console.error(
-    'ERROR: Something went wrong with MongoDB connection: ' +
-      err +
-      '. Exiting...'
-  );
-  process.exit(1);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('WARN: Disconnected from MongoDB');
-});
 
 export default new App().app;

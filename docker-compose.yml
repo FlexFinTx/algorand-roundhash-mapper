@@ -3,20 +3,20 @@ services:
   worker:
     build: .
     ports:
-      - '3000:3000'
+      - '3003:3000'
     restart: unless-stopped
     env_file: .env
     links:
-      - mongo
+      - mapper_db
     depends_on:
-      - mongo
-  mongo:
-    image: mongo:latest
-    restart: always
-    volumes:
-      - ./mongo/data:/mongo/data
+      - mapper_db
+  mapper_db:
+    image: postgres:9.6.1
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=docker
-      - MONGO_INITDB_ROOT_PASSWORD=docker
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=mapperdb
+    volumes:
+      - ./db/data:/app/postgres/data
     ports:
-      - '27017:27017'
+      - 5432:5432

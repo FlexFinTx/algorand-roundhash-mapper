@@ -1,8 +1,10 @@
-import * as mongoose from 'mongoose';
+import { Entity, Column, BaseEntity, PrimaryColumn } from 'typeorm';
 
-const RoundHashSchema = new mongoose.Schema({
-  hash: String,
-  round: Number
-});
+@Entity()
+export class RoundHash extends BaseEntity {
+  @PrimaryColumn()
+  hash: string;
 
-export const RoundHashModel = mongoose.model('RoundHash', RoundHashSchema);
+  @Column()
+  round: number;
+}
