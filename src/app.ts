@@ -30,7 +30,7 @@ class App {
   constructor() {
     this.app = express();
     this.config();
-    this.routes.routes(this.app, this.options);
+    this.routes.routes(this.app);
     if (this.dbHost == '' || !this.dbHost) {
       console.error('FATAL: DB Host is missing. Exiting...');
       process.exit(1);
